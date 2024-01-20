@@ -1,10 +1,10 @@
 # ascede
 
-Ascede is a simple wrapper that I wrote for [Raylib](https://github.com/raysan5/raylib), and is intended for personal use. It is C99, header-only, and extremely user-friendly.
+Ascede is a simple wrapper that I wrote for [Raylib](https://github.com/raysan5/raylib), and is intended for personal use. It is C99, **header-only**, and intended to be extremely user-friendly.
 
 To use, put Raylib's `src` folder in ascede's directory, and `#include "ascede.h"` instead of `raylib.h`. When compiling, **link raylib** as when building with vanilla Raylib.
 
-It is **a must** to **enable** `SUPPORT_CUSTOM_FRAME_CONTROL` beforehand. Ascede's time module **wouldn't work otherwise**.
+It is **a must** to **enable** the compiling flag `SUPPORT_CUSTOM_FRAME_CONTROL` for Raylib beforehand. Ascede's time module **wouldn't work otherwise**.
 
 ## Why ascede?
 
@@ -14,12 +14,21 @@ It is **a must** to **enable** `SUPPORT_CUSTOM_FRAME_CONTROL` beforehand. Ascede
 - Developing ascede also makes it easier for me to put forward tweaks on Raylib **without having to change its code**.
   - I used to boost my development through altering the codebase of Raylib, which was soon proved a very bad idea, as Raylib is a library under active development.
 
+## Step-by-step build for beginners
+
+1. Download sources for Ascede and Raylib.
+2. Replace Raylib's `config.h` header file with the one provided by Ascede.
+   - Alternative: I made a few changes in it to suit the development of Ascede. You might as well ignore the file and make your own alterations instead.
+3. Compile Raylib from source. In case you don't know how, check Raylib's repo.
+4. Copy Ascede's headers to just outside of Raylib's `src` folder.
+   - Alternative: Change the `#include` path in `asc_def.h` to include `raylib.h`.
+5. `#include "asc_def.h"` in your development, and `#include "ascede.h"` in the source file that requires implementations.
+
 ## Example
 
 ```C
 #include "ascede.h"
 int main(){
-    asc_init();
     Window.init(400, 300, "test");
     Window.setMinSize(200, 150);
 
@@ -41,13 +50,14 @@ int main(){
 ## Version history
 
 - Update #1 - Nov 23, 2023
-  - Wrapped the modules of `Window`, `Buffer`, `Loop` and `Rtx` (for type `RenderTexture`).
+  - Wrapped the modules of `Window`, `Buffer`, `Loop` and `Rtx` (for type `RenderTexture`).
   - Implemented time module and wrapped several most common functions.
   - Implemented function `Rtx.drawBounds()`.
 - Update #2 - Jan 20, 2024
   - Wrapped the modules of `Mouse`, `Key`, `Typeface` and `Shape`.
   - Implemented typeface manipulations, including a smart loading of Unicode fonts.
   - Implemented function `Typeface.update()`.
+  - Removed `asc_init()` and made wrapper function pointers constant for consistency.
 
 ## Future to-dos
 

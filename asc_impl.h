@@ -1,6 +1,6 @@
 #ifndef ASCEDE_IMPL
 #define ASCEDE_IMPL
-#include "src/raylib.h"
+#include "asc_def.h"
 #include <stdlib.h>
 
 // memory leak tracker
