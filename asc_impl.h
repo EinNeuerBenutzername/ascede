@@ -1,51 +1,27 @@
 #ifndef ASCEDE_IMPL
 #define ASCEDE_IMPL
 #include "src/raylib.h"
-void asc_init(){
-    Window.close=CloseWindow;
-    Window.init=__Asc_Window_Init;
-    Window.shouldClose=WindowShouldClose;
-    Window.setExitKey=SetExitKey;
-    Window.setExitKey(-32768);
-    Window.setSize=SetWindowSize;
-    Window.setMinSize=SetWindowMinSize;
-    Window.toggleFlags=__Asc_Window_ToggleFlags;
-    Window.isResizable=__Asc_Window_IsResizable;
-    Window.setResizable=__Asc_Window_SetResizable;
-    Window.getWidth=GetScreenWidth;
-    Window.getHeight=GetScreenHeight;
+#include <stdlib.h>
 
-    Key.isUp=IsKeyUp;
-    Key.isDown=IsKeyDown;
-    Key.isPressed=IsKeyPressed;
-    Key.isReleased=IsKeyReleased;
+// memory leak tracker
+typedef struct __Struct_Asc_Mem_Link __Struct_Asc_Mem_Link;
+struct __Struct_Asc_Mem_Link {
+    __Struct_Asc_Mem_Link *previous;
+    void *ptr;
+    __Struct_Asc_Mem_Link *next;
+};
 
-    Loop.poll=PollInputEvents;
-    Loop.end=__Asc_Loop_End;
 
-    Time.get=GetTime;
-    Time.getFrame=__Asc_Time_GetFrame;
-    Time.sleep=WaitTime;
-    Time.wait=__Asc_Time_Wait;
-    Time.getFPS=__Asc_Time_GetFPS;
-    Time.getRealFPS=__Asc_Time_GetRealFPS;
+//-----------------------
 
-    Buffer.updateBegin=BeginDrawing;
-    Buffer.clear=ClearBackground;
-    Buffer.update=EndDrawing;
-    Buffer.swap=SwapScreenBuffer;
-
-    Rtx.init=LoadRenderTexture;
-    Rtx.denit=UnloadRenderTexture;
-    Rtx.updateBegin=BeginTextureMode;
-    Rtx.update=EndTextureMode;
-    Rtx.drawBounds=__Asc_Rtx_DrawBounds;
-}
+static struct {
+    int state;
+} __Asc_Window = {0};
 
 static void __Asc_Window_Init(int width, int height, const char *title){
     InitWindow(width, height, title);
     Window.setResizable(true);
-    Window.toggleFlags(FLAG_WINDOW_RESIZABLE|FLAG_WINDOW_ALWAYS_RUN, true);
+    Window.toggleFlags(FLAG_WINDOW_ALWAYS_RUN, true);
 }
 static bool __Asc_Window_IsResizable(void){
     return IsWindowState(FLAG_WINDOW_RESIZABLE);
@@ -68,6 +44,25 @@ static void __Asc_Window_ToggleFlags(int flags, bool toggle){
         ClearWindowState(flags);
     }
 }
+
+#ifndef __ASC_TIME_HISTORIES
+#define __ASC_TIME_HISTORIES 30
+#endif
+
+static struct {
+    double previous;
+    double current;
+    double frame;
+    double FPS;
+    unsigned int frameCounter;
+    double extratime;
+    int abnormal;
+    int histIndex;
+    double history[__ASC_TIME_HISTORIES];
+    double average;
+    double targetFPS;
+} __Asc_Time = {0};
+
 static void __Asc_Loop_End(){
     __Asc_Time.current=Time.get();
     __Asc_Time.frame=__Asc_Time.current-__Asc_Time.previous;
@@ -135,5 +130,84 @@ static void __Asc_Rtx_DrawBounds(RenderTexture2D rtx, Rectangle bounds){
         }, (Vector2){0,0}, 0, WHITE
     );
 }
+
+static TypefaceData __Asc_Typeface_Init(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize){
+    TypefaceData tf;
+    int cp[3]={0, 0, 0};
+    tf.font=LoadFontFromMemory(fileType, fileData, dataSize, fontSize, cp, 3);
+    tf.fontData=fileData;
+    tf.fontDataSize=dataSize;
+    return tf;
+}
+static void __Asc_Typeface_Denit(TypefaceData tf){
+    UnloadFont(tf.font);
+}
+static void __Asc_Typeface_Draw(TypefaceData *tf, const char *text, Vector2 position, float fontSize, Color tint){
+    Typeface.update(tf, text);
+    DrawTextEx(tf->font, text, position, fontSize, 0, tint);
+}
+static void __Asc_Typeface_Update(TypefaceData *tf, const char *str){
+    int cpSize, *cp=LoadCodepoints(str, &cpSize);
+    Font *font=&tf->font;
+    int typefaceShouldUpdate=0;
+    for(int i=0; i<cpSize; i++){
+        int found=0;
+        for(int j=0; j<font->glyphCount; j++){
+            if(font->glyphs[j].value==cp[i]){
+                found=1;
+                break;
+            }
+        }
+        if(!found){
+            typefaceShouldUpdate=1;
+            break;
+        }
+    }
+    if(!typefaceShouldUpdate || !cpSize)return;
+    GlyphInfo *glyphs=LoadFontData(tf->fontData, tf->fontDataSize, font->baseSize, cp, cpSize, FONT_DEFAULT);
+    UnloadCodepoints(cp);
+    if(glyphs){
+        int fontGlyphCount=font->glyphCount, len=fontGlyphCount;
+        GlyphInfo *glyphUnion=malloc(sizeof(GlyphInfo)*(cpSize+len));
+        if(fontGlyphCount){
+//            memcpy(glyphUnion, font->glyphs, sizeof(GlyphInfo)*fontGlyphCount);
+            for(int i=0; i<fontGlyphCount; i++){
+                glyphUnion[i]=font->glyphs[i];
+            }
+        }
+        for(int i=0; i<cpSize; i++){
+            int found=0;
+            for(int j=0; j<len; j++){
+                if(glyphUnion[j].value==glyphs[i].value){
+                    found=1;
+                    UnloadImage(glyphs[i].image);
+                    break;
+                }
+            }
+            if(!found){
+                glyphUnion[len]=glyphs[i];
+//                memcpy(glyphUnion+len, glyphs+i, sizeof(GlyphInfo));
+                len++;
+            }
+        }
+        if(fontGlyphCount)free(font->glyphs);
+        free(glyphs);
+        font->glyphs=glyphUnion;
+        font->glyphCount=len;
+        if(len!=fontGlyphCount){
+            free(font->recs);
+            Image atlas=GenImageFontAtlas(font->glyphs, &font->recs, font->glyphCount, font->baseSize, font->glyphPadding, 1);
+            UnloadTexture(font->texture);
+            font->texture=LoadTextureFromImage(atlas);
+//            for(int i=0; i<font->glyphCount; i++){
+//                UnloadImage(font->glyphs[i].image);
+//                font->glyphs[i].image=ImageFromImage(atlas,font->recs[i]);
+//            }
+            UnloadImage(atlas);
+        }
+    }
+}
+
+
 
 #endif

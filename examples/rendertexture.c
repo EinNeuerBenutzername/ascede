@@ -1,6 +1,5 @@
 #include "ascede.h"
 int main(){
-    asc_init();
     Window.init(500, 250, "rendertexture");
     Window.setResizable(true);
     Window.setMinSize(500, 250);
