@@ -3,30 +3,34 @@
 #include "src/raylib.h"
 //*: with Raylib dependency
 
-static void __Asc_Window_Init(int width, int height, const char *title); //*
-static bool __Asc_Window_IsResizable(void); //*
-static void __Asc_Window_SetResizable(bool toggle); //*
-static void __Asc_Window_ToggleFlags(int flags, bool toggle); //*
+void __Asc_Window_Init(int width, int height, const char *title); //*
+bool __Asc_Window_IsResizable(void); //*
+void __Asc_Window_SetResizable(bool toggle); //*
+void __Asc_Window_ToggleFlags(int flags, bool toggle); //*
 
-static void __Asc_Loop_End(void);
+void __Asc_Loop_End(void);
 
-static void __Asc_Time_Wait(double fps);
-static double __Asc_Time_GetFPS(void);
-static double __Asc_Time_GetRealFPS(void);
-static double __Asc_Time_GetFrame(void);
+void __Asc_Time_Wait(double fps);
+double __Asc_Time_GetFPS(void);
+double __Asc_Time_GetRealFPS(void);
+double __Asc_Time_GetFrame(void);
 
-static void __Asc_Rtx_DrawBounds(RenderTexture2D rtx, Rectangle bounds); //*
+void __Asc_Rtx_DrawBounds(RenderTexture2D rtx, Rectangle bounds); //*
 
 typedef struct {
+    int state;
     Font font;
     const unsigned char *fontData;
     int fontDataSize;
 } TypefaceData;
 
-static TypefaceData __Asc_Typeface_Init(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize); //*
-static void __Asc_Typeface_Denit(TypefaceData tf); //*
-static void __Asc_Typeface_Draw(TypefaceData *tf, const char *text, Vector2 position, float fontSize, Color tint); //*
-static void __Asc_Typeface_Update(TypefaceData *tf, const char *str); //*, memory manipulation (malloc(), free())
+TypefaceData __Asc_Typeface_Init(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize); //*
+TypefaceData __Asc_Typeface_GetDefaultTf(void); //*
+void __Asc_Typeface_Denit(TypefaceData *tf); //*
+void __Asc_Typeface_Draw(TypefaceData *tf, const char *text, int posX, int posY, int fontSize, Color tint); //*
+void __Asc_Typeface_DrawEx(TypefaceData *tf, const char *text, Vector2 position, Vector2 origin, float rotation, float fontSize, float spacing, Color tint); //*
+void __Asc_Typeface_DrawWrapped(TypefaceData *tf, const char *text, Rectangle rec, int fontSize, Color tint); //*
+void __Asc_Typeface_Update(TypefaceData *tf, const char *str); //*, memory manipulation (malloc(), free())
 
 const struct { // Window
     void (*close)(void);
@@ -158,20 +162,42 @@ const struct { // Mouse
 
 struct { // Typeface
     TypefaceData (*init)(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize);
-    void (*denit)(TypefaceData tf); // data within Typeface{} has to be freed manually afterwards
-    void (*draw)(TypefaceData *tf, const char *text, Vector2 position, float fontSize, Color tint);
+    TypefaceData (*getDefaultTf)(void);
+    void (*denit)(TypefaceData *tf); // data within Typeface{} has to be freed manually afterwards
+    void (*draw)(TypefaceData *tf, const char *text, int posX, int posY, int fontSize, Color tint);
+    void (*drawEx)(TypefaceData *tf, const char *text, Vector2 position, Vector2 origin, float rotation, float fontSize, float spacing, Color tint);
+    void (*drawWrapped)(TypefaceData *tf, const char *text, Rectangle rec, int fontSize, Color tint);
     void (*update)(TypefaceData *tf, const char *str);
 } Typeface = {
     .init=__Asc_Typeface_Init,
+    .getDefaultTf=__Asc_Typeface_GetDefaultTf,
     .denit=__Asc_Typeface_Denit,
     .draw=__Asc_Typeface_Draw,
+    .drawEx=__Asc_Typeface_DrawEx,
+    .drawWrapped=__Asc_Typeface_DrawWrapped,
     .update=__Asc_Typeface_Update
 };
 
-struct {
+struct { // Shape
     void (*drawRec)(int posX, int posY, int width, int height, Color color);
 } Shape = {
     .drawRec=DrawRectangle
 };
+
+struct { // Tint
+    Color (*fade)(Color color, float fade);
+} Tint = {
+    .fade=Fade
+};
+
+struct { // Audio...?
+    void (*init)(void);
+    void (*close)(void);
+    bool (*isReady)(void);
+    void (*setMasterVolume)(void);
+} Audio = {
+    0
+};
+
 
 #endif

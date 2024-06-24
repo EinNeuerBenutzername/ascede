@@ -21,7 +21,7 @@ It is **a must** to **enable** the compiling flag `SUPPORT_CUSTOM_FRAME_CONTROL`
    - Alternative: I made a few changes in it to suit the development of Ascede. You might as well ignore the file and make your own alterations instead.
 3. Compile Raylib from source. In case you don't know how, check Raylib's repo.
 4. Copy Ascede's headers to just outside of Raylib's `src` folder.
-   - Alternative: Change the `#include` path in `asc_def.h` to include `raylib.h`.
+   - Alternative: Change the `#include` path in `asc_def.h` to include `raylib.h`.
 5. `#include "asc_def.h"` in your development, and `#include "ascede.h"` in the source file that requires implementations.
 
 ## Example
@@ -34,9 +34,12 @@ int main(){
 
     while(!Window.shouldClose()){
         Loop.poll();
+        // Process stuff here
+        
         Buffer.drawBegin();
         Buffer.clear(WHITE);
-
+		// Draw here
+        
         Buffer.drawEnd();
         Buffer.swap();
         Time.wait(60);
@@ -58,6 +61,10 @@ int main(){
   - Implemented typeface manipulations, including a smart loading of Unicode fonts.
   - Implemented function `Typeface.update()`.
   - Removed `asc_init()` and made wrapper function pointers constant for consistency.
+- Update #2r - June 24, 2024
+  - Wrapped the `Tint` module.
+  - Made slight stability improvements.
+
 
 ## Future to-dos
 

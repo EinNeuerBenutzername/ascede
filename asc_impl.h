@@ -14,19 +14,19 @@ struct __Struct_Asc_Mem_Link {
 
 //-----------------------
 
-static struct {
+struct {
     int state;
 } __Asc_Window = {0};
 
-static void __Asc_Window_Init(int width, int height, const char *title){
+void __Asc_Window_Init(int width, int height, const char *title){
     InitWindow(width, height, title);
     Window.setResizable(true);
     Window.toggleFlags(FLAG_WINDOW_ALWAYS_RUN, true);
 }
-static bool __Asc_Window_IsResizable(void){
+bool __Asc_Window_IsResizable(void){
     return IsWindowState(FLAG_WINDOW_RESIZABLE);
 }
-static void __Asc_Window_SetResizable(bool toggle){
+void __Asc_Window_SetResizable(bool toggle){
     if(toggle){
         __Asc_Window.state|=FLAG_WINDOW_RESIZABLE;
         SetWindowState(FLAG_WINDOW_RESIZABLE);
@@ -35,7 +35,7 @@ static void __Asc_Window_SetResizable(bool toggle){
         ClearWindowState(FLAG_WINDOW_RESIZABLE);
     }
 }
-static void __Asc_Window_ToggleFlags(int flags, bool toggle){
+void __Asc_Window_ToggleFlags(int flags, bool toggle){
     if(toggle){
         __Asc_Window.state|=flags;
         SetWindowState(flags);
@@ -49,7 +49,7 @@ static void __Asc_Window_ToggleFlags(int flags, bool toggle){
 #define __ASC_TIME_HISTORIES 30
 #endif
 
-static struct {
+struct {
     double previous;
     double current;
     double frame;
@@ -63,7 +63,7 @@ static struct {
     double targetFPS;
 } __Asc_Time = {0};
 
-static void __Asc_Loop_End(){
+void __Asc_Loop_End(){
     __Asc_Time.current=Time.get();
     __Asc_Time.frame=__Asc_Time.current-__Asc_Time.previous;
     __Asc_Time.previous=__Asc_Time.current;
@@ -81,7 +81,7 @@ static void __Asc_Loop_End(){
     if(__Asc_Time.abnormal)__Asc_Time.abnormal--;
 }
 
-static void __Asc_Time_Wait(double targetFPS){
+void __Asc_Time_Wait(double targetFPS){
     if(targetFPS<=0.5f)return;
     if(targetFPS>32767.0f)return;
     __Asc_Time.targetFPS=targetFPS;
@@ -103,21 +103,21 @@ static void __Asc_Time_Wait(double targetFPS){
     extra+=previous+target-Time.get();
     __Asc_Time.extratime=extra;
 }
-static double __Asc_Time_GetFPS(void){
+double __Asc_Time_GetFPS(void){
     if(__Asc_Time.abnormal==0){
         return __Asc_Time.targetFPS;
     }else{
         return __Asc_Time.FPS;
     }
 }
-static double __Asc_Time_GetRealFPS(void){
+double __Asc_Time_GetRealFPS(void){
     return __Asc_Time.FPS;
 }
-static double __Asc_Time_GetFrame(void){
+double __Asc_Time_GetFrame(void){
     return __Asc_Time.frame;
 }
 
-static void __Asc_Rtx_DrawBounds(RenderTexture2D rtx, Rectangle bounds){
+void __Asc_Rtx_DrawBounds(RenderTexture2D rtx, Rectangle bounds){
     Texture2D texture=rtx.texture;
     float scale=bounds.width*1.0f/texture.width<bounds.height*1.0f/texture.height?
         bounds.width*1.0f/texture.width: bounds.height*1.0f/texture.height;
@@ -131,22 +131,49 @@ static void __Asc_Rtx_DrawBounds(RenderTexture2D rtx, Rectangle bounds){
     );
 }
 
-static TypefaceData __Asc_Typeface_Init(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize){
+TypefaceData __Asc_Typeface_Init(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize){
     TypefaceData tf;
-    int cp[3]={0, 0, 0};
+    int cp[3]={0, 0, 0}; // Sometimes it just breaks without duplicate initial zeroes, idk why
     tf.font=LoadFontFromMemory(fileType, fileData, dataSize, fontSize, cp, 3);
     tf.fontData=fileData;
     tf.fontDataSize=dataSize;
+    tf.state=1;
     return tf;
 }
-static void __Asc_Typeface_Denit(TypefaceData tf){
-    UnloadFont(tf.font);
+TypefaceData __Asc_Typeface_GetDefaultTf(void){
+    TypefaceData tf;
+    tf.font=GetFontDefault();
+    tf.fontData=NULL;
+    tf.fontDataSize=0;
+    tf.state=2;
+    return tf;
 }
-static void __Asc_Typeface_Draw(TypefaceData *tf, const char *text, Vector2 position, float fontSize, Color tint){
+void __Asc_Typeface_Denit(TypefaceData *tf){
+    UnloadFont(tf->font);
+    tf->fontData=NULL;
+    tf->fontDataSize=0;
+    tf->state=0;
+}
+void __Asc_Typeface_Draw(TypefaceData *tf, const char *text, int posX, int posY, int fontSize, Color tint){
+    if(!tf->state)return;
     Typeface.update(tf, text);
-    DrawTextEx(tf->font, text, position, fontSize, 0, tint);
+    DrawTextEx(tf->font, text, (Vector2){posX, posY}, fontSize, (tf->state==2)?fontSize/10:0, tint);
 }
-static void __Asc_Typeface_Update(TypefaceData *tf, const char *str){
+void __Asc_Typeface_DrawEx(TypefaceData *tf, const char *text, Vector2 position, Vector2 origin, float rotation, float fontSize, float spacing, Color tint){
+    if(!tf->state)return;
+    Typeface.update(tf, text);
+    DrawTextPro(tf->font, text, position, origin, rotation, fontSize, spacing, tint);
+}
+void __Asc_Typeface_DrawWrapped(TypefaceData *tf, const char *text, Rectangle rec, int fontSize, Color tint){
+    if(!tf->state)return;
+    Typeface.update(tf, text);
+    (void)text;
+    (void)rec;
+    (void)fontSize;
+    (void)tint;
+}
+void __Asc_Typeface_Update(TypefaceData *tf, const char *str){
+    if(!tf->fontData || !tf->fontDataSize)return;
     int cpSize, *cp=LoadCodepoints(str, &cpSize);
     Font *font=&tf->font;
     int typefaceShouldUpdate=0;
